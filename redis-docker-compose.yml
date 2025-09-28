@@ -1,0 +1,76 @@
+services:
+  # --- 1. Redis Standalone ---
+  redis-standalone:
+    image: redis:7.2
+    container_name: redis-standalone
+    command: ["redis-server", "--requirepass", "StrongPassword123"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./data/standalone:/data
+    restart: unless-stopped
+
+  # --- 2. Redis with Sentinel (HA setup) ---
+  redis-master:
+    image: redis:7.2
+    container_name: redis-master
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "masterpass"]
+    ports:
+      - "6380:6379"
+    volumes:
+      - ./data/master:/data
+    restart: unless-stopped
+
+  redis-slave1:
+    image: redis:7.2
+    container_name: redis-slave1
+    command: ["redis-server", "--slaveof", "redis-master", "6379", "--requirepass", "slavepass"]
+    ports:
+      - "6381:6379"
+    restart: unless-stopped
+
+  redis-slave2:
+    image: redis:7.2
+    container_name: redis-slave2
+    command: ["redis-server", "--slaveof", "redis-master", "6379", "--requirepass", "slavepass"]
+    ports:
+      - "6382:6379"
+    restart: unless-stopped
+
+  sentinel1:
+    image: redis:7.2
+    container_name: sentinel1
+    command: >
+      redis-sentinel /etc/redis/sentinel.conf
+    volumes:
+      - ./sentinel/sentinel.conf:/etc/redis/sentinel.conf
+    ports:
+      - "26379:26379"
+    depends_on:
+      - redis-master
+      - redis-slave1
+      - redis-slave2
+    restart: unless-stopped
+
+  # --- 3. Redis Cluster (3 masters + 3 replicas) ---
+  redis-cluster:
+    image: grokzen/redis-cluster:7.2.0
+    container_name: redis-cluster
+    ports:
+      - "7000-7005:7000-7005"
+    environment:
+      IP: 0.0.0.0
+      STANDALONE: "false"
+      SENTINEL: "false"
+      CLUSTER_ONLY: "true"
+    volumes:
+      - ./data/cluster:/data
+    restart: unless-stopped
+
+  # --- 4. RedisInsight UI ---
+  redis-insight:
+    image: redislabs/redisinsight:latest
+    container_name: redis-insight
+    ports:
+      - "8001:8001"
+    restart: unless-stopped
