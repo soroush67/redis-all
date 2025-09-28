@@ -40,8 +40,7 @@ services:
   sentinel1:
     image: redis:7.2
     container_name: sentinel1
-    command: >
-      redis-sentinel /etc/redis/sentinel.conf
+    command: redis-sentinel /etc/redis/sentinel.conf
     volumes:
       - ./sentinel/sentinel.conf:/etc/redis/sentinel.conf
     ports:
@@ -52,20 +51,66 @@ services:
       - redis-slave2
     restart: unless-stopped
 
-  # --- 3. Redis Cluster (3 masters + 3 replicas) ---
-  redis-cluster:
-    image: grokzen/redis-cluster:7.2.0
-    container_name: redis-cluster
+  # --- 3. Redis Cluster (6 nodes: 3 masters + 3 replicas) ---
+  redis-node-1:
+    image: redis:7.2
+    container_name: redis-node-1
+    command: ["redis-server", "--port", "7000", "--cluster-enabled", "yes", "--cluster-config-file", "nodes.conf", "--appendonly", "yes"]
     ports:
-      - "7000-7005:7000-7005"
-    environment:
-      IP: 0.0.0.0
-      STANDALONE: "false"
-      SENTINEL: "false"
-      CLUSTER_ONLY: "true"
-    volumes:
-      - ./data/cluster:/data
-    restart: unless-stopped
+      - "7000:7000"
+    networks:
+      redis-cluster:
+        ipv4_address: 172.28.0.11
+
+  redis-node-2:
+    image: redis:7.2
+    container_name: redis-node-2
+    command: ["redis-server", "--port", "7001", "--cluster-enabled", "yes", "--cluster-config-file", "nodes.conf", "--appendonly", "yes"]
+    ports:
+      - "7001:7001"
+    networks:
+      redis-cluster:
+        ipv4_address: 172.28.0.12
+
+  redis-node-3:
+    image: redis:7.2
+    container_name: redis-node-3
+    command: ["redis-server", "--port", "7002", "--cluster-enabled", "yes", "--cluster-config-file", "nodes.conf", "--appendonly", "yes"]
+    ports:
+      - "7002:7002"
+    networks:
+      redis-cluster:
+        ipv4_address: 172.28.0.13
+
+  redis-node-4:
+    image: redis:7.2
+    container_name: redis-node-4
+    command: ["redis-server", "--port", "7003", "--cluster-enabled", "yes", "--cluster-config-file", "nodes.conf", "--appendonly", "yes"]
+    ports:
+      - "7003:7003"
+    networks:
+      redis-cluster:
+        ipv4_address: 172.28.0.14
+
+  redis-node-5:
+    image: redis:7.2
+    container_name: redis-node-5
+    command: ["redis-server", "--port", "7004", "--cluster-enabled", "yes", "--cluster-config-file", "nodes.conf", "--appendonly", "yes"]
+    ports:
+      - "7004:7004"
+    networks:
+      redis-cluster:
+        ipv4_address: 172.28.0.15
+
+  redis-node-6:
+    image: redis:7.2
+    container_name: redis-node-6
+    command: ["redis-server", "--port", "7005", "--cluster-enabled", "yes", "--cluster-config-file", "nodes.conf", "--appendonly", "yes"]
+    ports:
+      - "7005:7005"
+    networks:
+      redis-cluster:
+        ipv4_address: 172.28.0.16
 
   # --- 4. RedisInsight UI ---
   redis-insight:
@@ -74,3 +119,10 @@ services:
     ports:
       - "8001:8001"
     restart: unless-stopped
+
+networks:
+  redis-cluster:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
